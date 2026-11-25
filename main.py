@@ -1,94 +1,115 @@
 #!/usr/bin/env python3
-"""Make the AI Judge Feel Nostalgic: A Childhood Memory.
+"""A childhood memory in one sentence, for make.fun.
 
-Writes one sentence (at most 280 characters) -- a childhood memory --
-to /output/entry.txt, as required by the bounty kit (program/v1 harness).
+Bounty: Make the AI Judge Feel Nostalgic: A Childhood Memory
+(https://make.fun/bounty/u-shino-make-the-ai-judge-feel-nostalgic-a-childhood-625d3363)
 
-Deterministic: the entry is a fixed string; every run writes
-byte-identical output.
+The entry is a single fixed sentence of at most 280 characters. Running
+this script validates the sentence and prints it byte-for-byte to stdout,
+and also writes it (with no trailing newline) to the harness output file
+so the program/v1 harness can read it back exactly.
 
-Finisher-verified 2026-11-25: entry is 279 characters, one sentence,
-single line, within the 280-character limit.
+Usage:
+    python3 main.py              print the entry, write the output file
+    python3 main.py --self-test  validate the entry and report each gate
 """
 
 import os
 import sys
 
-# The entry: one sentence, 279 characters, a childhood memory.
-# Verified from the local build files on 2026-11-25 before publishing.
-ENTRY = (
-    "Every summer evening my grandmother peeled a mango over the sink, "
-    "juice running down her wrists, and handed me the first slice on the "
-    "tip of her knife while cicadas sang outside the kitchen window, and "
-    "I still wait for that slice every summer, though she has been gone "
-    "for years."
-)
+ENTRY = "Every summer evening my grandmother peeled a mango over the sink, juice running down her wrists, and handed me the first slice on the tip of her knife while cicadas sang outside the kitchen window, and I still wait for that slice every summer, though she has been gone for years."
 
-MAX_CHARS = 280
+CHARACTER_LIMIT = 280
+DEFAULT_OUTPUT = "/output/entry.txt"
 
 
-def validate_entry(text: str) -> None:
-    """Enforce the kit's gate: UTF-8 text of 1 to 280 characters."""
+def entry_bytes(text):
+    """Return the entry encoded as UTF-8 bytes, exactly as printed."""
+    return text.encode("utf-8")
+
+
+def validate(text):
+    """Raise ValueError unless the text passes every bounty gate."""
     if not isinstance(text, str):
         raise ValueError("entry must be a string")
-    if not (1 <= len(text) <= MAX_CHARS):
-        raise ValueError(f"entry is {len(text)} chars, must be 1-{MAX_CHARS}")
-    if text != text.strip():
-        raise ValueError("entry must not have leading or trailing whitespace")
+    if not text:
+        raise ValueError("entry must not be empty")
+    if len(text) > CHARACTER_LIMIT:
+        raise ValueError(
+            "entry is %d characters, over the %d limit" % (len(text), CHARACTER_LIMIT)
+        )
+    if text.strip() != text:
+        raise ValueError("entry must not start or end with whitespace")
     if "\n" in text or "\r" in text:
-        raise ValueError("entry must be a single line")
+        raise ValueError("entry must be one line")
+    if text.count(".") != 1:
+        raise ValueError("entry must be exactly one sentence")
+    entry_bytes(text)  # raises if the text is not valid UTF-8
+    return True
 
 
-def count_sentences(text: str) -> int:
-    """Count sentence-ending periods (the entry must be one sentence)."""
-    return text.count(".")
-
-
-def gate_check(text: str) -> dict:
-    """Self-test: report every gate condition for the entry."""
+def report():
+    """Collect the gate results for --self-test."""
     return {
-        "chars": len(text),
-        "within_280": 1 <= len(text) <= MAX_CHARS,
-        "single_line": "\n" not in text and "\r" not in text,
-        "single_sentence": count_sentences(text) == 1,
-        "not_blank": bool(text.strip()),
-        "valid_utf8": True,
+        "characters": len(ENTRY),
+        "limit": CHARACTER_LIMIT,
+        "within_limit": len(ENTRY) <= CHARACTER_LIMIT,
+        "single_line": "\n" not in ENTRY and "\r" not in ENTRY,
+        "one_sentence": ENTRY.count(".") == 1,
+        "non_empty": bool(ENTRY.strip()),
+        "utf8_ok": True,
     }
 
 
-def self_test() -> int:
-    """Run the gate self-test and print the result."""
+def self_test():
+    """Check the entry against every gate and print the verdict."""
     try:
-        ENTRY.encode("utf-8")
+        entry_bytes(ENTRY)
     except UnicodeEncodeError:
         print("self-test FAILED: entry is not valid UTF-8")
         return 1
-    checks = gate_check(ENTRY)
-    for key, value in checks.items():
-        print(f"{key}: {value}")
+    results = report()
+    for name in ("characters", "limit", "within_limit", "single_line",
+                 "one_sentence", "non_empty", "utf8_ok"):
+        print("%s: %s" % (name, results[name]))
     try:
-        validate_entry(ENTRY)
-    except ValueError as exc:
-        print(f"self-test FAILED: {exc}")
+        validate(ENTRY)
+    except ValueError as problem:
+        print("self-test FAILED: %s" % problem)
         return 1
-    if not checks["single_sentence"]:
+    if not results["one_sentence"]:
         print("self-test FAILED: entry must be exactly one sentence")
         return 1
     print("self-test PASSED")
     return 0
 
 
-def main() -> int:
-    if len(sys.argv) > 1 and sys.argv[1] == "--self-test":
+def write_output():
+    """Write the entry, byte-identical, to the harness output file.
+
+    After writing, the file is read back and compared with ENTRY so a
+    partial or re-encoded write is caught here instead of at judging time.
+    """
+    path = os.environ.get("ENTRY_OUTPUT", DEFAULT_OUTPUT)
+    folder = os.path.dirname(path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="") as handle:
+        handle.write(ENTRY)
+    with open(path, "r", encoding="utf-8", newline="") as handle:
+        if handle.read() != ENTRY:
+            raise ValueError("output file does not match the entry")
+    return path
+
+
+def main(argv):
+    if len(argv) > 1 and argv[1] == "--self-test":
         return self_test()
-    validate_entry(ENTRY)
-    output_path = os.environ.get("ENTRY_OUTPUT", "/output/entry.txt")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(ENTRY)
-    print(ENTRY)
+    validate(ENTRY)
+    write_output()
+    sys.stdout.write(ENTRY + "\n")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))
