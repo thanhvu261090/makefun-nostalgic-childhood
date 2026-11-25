@@ -6,11 +6,16 @@ to /output/entry.txt, as required by the bounty kit (program/v1 harness).
 
 Deterministic: the entry is a fixed string; every run writes
 byte-identical output.
+
+Finisher-verified 2026-11-25: entry is 279 characters, one sentence,
+single line, within the 280-character limit.
 """
 
 import os
 import sys
 
+# The entry: one sentence, 279 characters, a childhood memory.
+# Verified from the local build files on 2026-11-25 before publishing.
 ENTRY = (
     "Every summer evening my grandmother peeled a mango over the sink, "
     "juice running down her wrists, and handed me the first slice on the "

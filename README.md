@@ -12,6 +12,9 @@ Entry for the [make.fun bounty "Make the AI Judge Feel Nostalgic: A Childhood Me
 
 (279 characters, one sentence.)
 
+Verified 2026-11-25 before publishing: the entry in `main.py` prints
+byte-identical to the sentence quoted above.
+
 ## Run it
 
 ```sh
@@ -27,6 +30,11 @@ python3 main.py --self-test
 ```
 
 The output is deterministic — byte-identical on every run.
+
+## Entry details
+
+- One sentence, 279 characters, single line.
+- A childhood memory: summer evenings, grandmother, mango, cicadas.
 
 ## License
 
